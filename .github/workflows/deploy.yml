@@ -1,0 +1,86 @@
+name: Deploy to GitHub Pages
+
+# Builds this app against the development version of numbl (its `main` branch),
+# which is checked out as a sibling directory so the `numbl` file: dependency
+# (../../numbl) resolves exactly as it does in local development. Runs on every
+# push, on a daily schedule (to pick up numbl `main` changes), and on demand.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; don't cancel an in-progress production deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Lay the two repos out as siblings matching local dev:
+      #   <workspace>/concept-collection/numbl-figure-viewer  (this app)
+      #   <workspace>/numbl                                    (numbl main)
+      # so the app's `"numbl": "file:../../numbl"` resolves to <workspace>/numbl.
+      - name: Checkout app
+        uses: actions/checkout@v4
+        with:
+          path: concept-collection/numbl-figure-viewer
+
+      - name: Checkout numbl (main)
+        uses: actions/checkout@v4
+        with:
+          repository: flatironinstitute/numbl
+          ref: main
+          path: numbl
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            numbl/package-lock.json
+            concept-collection/numbl-figure-viewer/package-lock.json
+
+      # Build the numbl/graphics browser bundle the app imports. (HUSKY=0 skips
+      # the git-hook setup in numbl's prepare script; numbl's own install script
+      # is a no-op, so no native addon is built.)
+      - name: Build numbl/graphics
+        working-directory: numbl
+        env:
+          HUSKY: 0
+        run: |
+          npm ci
+          npm run build:graphics
+
+      - name: Install app dependencies
+        working-directory: concept-collection/numbl-figure-viewer
+        run: npm install
+
+      - name: Build app
+        working-directory: concept-collection/numbl-figure-viewer
+        run: npm run build:pages
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: concept-collection/numbl-figure-viewer/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
