@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   importFigureHdf5,
   loadFigureFromHash,
+  buildFigureViewerLink,
   FigureView,
   type FigureState,
 } from "numbl/graphics";
@@ -52,6 +53,8 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>(emptyViewState);
   const [dragOver, setDragOver] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<number | undefined>(undefined);
 
   const isMobile = useMediaQuery("(max-width: 820px)");
   const [leftOpen, setLeftOpen] = useState(true);
@@ -144,6 +147,30 @@ export function App() {
     if (isMobile) setLeftOpen(false);
   };
 
+  const showNotice = useCallback((msg: string) => {
+    setNotice(msg);
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 2800);
+  }, []);
+
+  // Share the current figure as a link: encode it into a URL pointing back at
+  // this viewer and copy it to the clipboard, unless it's too large for a URL.
+  const handleShare = useCallback(async () => {
+    if (!figure) return;
+    const base = window.location.origin + window.location.pathname;
+    const link = buildFigureViewerLink(figure, base);
+    if (!link.url) {
+      showNotice("This figure is too large to share via a link.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(link.url);
+      showNotice("Link copied to clipboard");
+    } catch {
+      showNotice("Couldn’t copy the link to the clipboard.");
+    }
+  }, [figure, showNotice]);
+
   const fileInput = (
     <input
       ref={inputRef}
@@ -189,6 +216,15 @@ export function App() {
         <span className="app-title">numbl figure viewer</span>
         {figure && <span className="file-name">{fileName}</span>}
         <span className="spacer" />
+        {figure && (
+          <button
+            className="text-btn"
+            onClick={handleShare}
+            title="Copy a shareable link to this figure"
+          >
+            Share link
+          </button>
+        )}
         <button className="text-btn" onClick={pickFile} disabled={loading}>
           {loading ? "Loading…" : "Open .h5…"}
         </button>
@@ -331,6 +367,8 @@ export function App() {
           )}
         </div>
       )}
+
+      {notice && <div className="toast">{notice}</div>}
     </div>
   );
 }
