@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { importFigureHdf5, FigureView, type FigureState } from "numbl/graphics";
+import {
+  importFigureHdf5,
+  loadFigureFromHash,
+  FigureView,
+  type FigureState,
+} from "numbl/graphics";
 import { buildTree } from "./tree";
 import { ObjectTree } from "./ObjectTree";
 import { InfoPanel } from "./InfoPanel";
@@ -60,6 +65,40 @@ export function App() {
     setLeftOpen(!isMobile);
     setRightOpen(!isMobile);
   }, [isMobile]);
+
+  // Receive a figure handed over from numbl via the URL hash (postMessage can't
+  // reach a COOP-isolated opener's cross-origin popup). Two forms: the figure
+  // gzip-encoded directly (`fig=`), or a reference to an encrypted upload
+  // (`u=&k=&iv=`) which we fetch + decrypt. Runs once (the upload host is
+  // one-shot); the hash is stripped from the address bar immediately.
+  const hashLoaded = useRef(false);
+  useEffect(() => {
+    if (hashLoaded.current) return;
+    hashLoaded.current = true;
+    const hash = window.location.hash;
+    if (!hash.startsWith("#fig=") && !hash.startsWith("#u=")) return;
+    try {
+      history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search
+      );
+    } catch {
+      /* ignore */
+    }
+    setLoading(true);
+    setError(null);
+    loadFigureFromHash(hash)
+      .then(fig => {
+        if (!fig) return;
+        setFigure(fig);
+        setFileName("from numbl");
+        setSelectedId("figure");
+        setViewState(emptyViewState());
+      })
+      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false));
+  }, []);
 
   const tree = useMemo(
     () => (figure ? buildTree(figure, fileName) : null),
@@ -174,13 +213,20 @@ export function App() {
         >
           <div className="empty-inner">
             <div className="empty-icon">▦</div>
-            <h2>Open a numbl figure</h2>
-            <p>
-              Drag a <code>.h5</code> figure file here, or click to choose one.
-            </p>
-            <p className="muted small">
-              Exported from numbl via “Download data (.h5)”.
-            </p>
+            {loading ? (
+              <h2>Loading figure…</h2>
+            ) : (
+              <>
+                <h2>Open a numbl figure</h2>
+                <p>
+                  Drag a <code>.h5</code> figure file here, or click to choose
+                  one.
+                </p>
+                <p className="muted small">
+                  Exported from numbl via “Download data (.h5)”.
+                </p>
+              </>
+            )}
           </div>
         </div>
       ) : (
