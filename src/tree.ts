@@ -22,7 +22,9 @@ export type DatasetDetail = {
   shapeLabel: string;
   count: number;
   stats?: { min: number; max: number; mean: number; nan: number };
-  preview: string;
+  /** The raw field value (number[] | number[][] | (number|number[])[]) for
+   *  full data display in the details panel. */
+  data: unknown;
 };
 
 export type NodeIcon = "figure" | "axes" | "trace" | "dataset";
@@ -50,7 +52,8 @@ const COLOR_FIELDS = new Set([
 
 // Trace categories in the same order as the HDF5 writer, so tree trace indices
 // line up with the file's trace indices. `single` marks one-per-axes traces.
-const TRACE_CATEGORIES: [keyof AxesState, string, boolean][] = [
+// Exported so the view-state transform can re-derive the same trace ordering.
+export const TRACE_CATEGORIES: [keyof AxesState, string, boolean][] = [
   ["traces", "plot", false],
   ["plot3Traces", "plot3", false],
   ["areaTraces", "area", false],
@@ -167,11 +170,7 @@ function makeDataset(
       : { min: NaN, max: NaN, mean: NaN, nan };
   }
 
-  const previewVals = flat.slice(0, 16).map(fmtNum).join(", ");
-  const preview =
-    flat.length > 16 ? `${previewVals}, … (${flat.length} total)` : previewVals;
-
-  return { type: "dataset", name, shapeLabel, count: flat.length, stats, preview };
+  return { type: "dataset", name, shapeLabel, count: flat.length, stats, data: raw };
 }
 
 // ── Trace flattening ────────────────────────────────────────────────────────

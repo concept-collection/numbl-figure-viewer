@@ -1,9 +1,73 @@
+import { useState } from "react";
 import type { TreeNode } from "./tree";
 
 function fmt(x: number): string {
   if (Number.isNaN(x)) return "NaN";
   if (!Number.isFinite(x)) return x > 0 ? "Inf" : "-Inf";
   return Number.isInteger(x) ? String(x) : Number(x.toPrecision(6)).toString();
+}
+
+// Hard cap on how many values/rows are ever rendered as text, to keep large
+// arrays (e.g. big surf grids) from freezing the UI.
+const MAX_RENDER = 5000;
+const STEP = 1000;
+
+function DataValues({ data }: { data: unknown }) {
+  const [limit, setLimit] = useState(200);
+
+  if (!Array.isArray(data) || data.length === 0)
+    return <p className="muted small">No data.</p>;
+
+  const isNumber = (e: unknown) => typeof e === "number";
+  const allNumbers = (data as unknown[]).every(isNumber);
+
+  const total = data.length;
+  const renderCap = Math.min(total, MAX_RENDER);
+  const shown = Math.min(limit, renderCap);
+  const hasMore = shown < renderCap;
+  const capped = total > MAX_RENDER && shown >= MAX_RENDER;
+  const unit = allNumbers ? "values" : "rows";
+
+  let body: string;
+  if (allNumbers) {
+    body = (data as number[]).slice(0, shown).map(fmt).join(", ");
+  } else {
+    body = (data as unknown[])
+      .slice(0, shown)
+      .map((r, i) => {
+        const text = Array.isArray(r)
+          ? `[${(r as number[]).map(fmt).join(", ")}]`
+          : fmt(r as number);
+        return `${i}: ${text}`;
+      })
+      .join("\n");
+  }
+  if (shown < total) body += allNumbers ? ", …" : "\n…";
+
+  return (
+    <>
+      <pre className="preview">{body}</pre>
+      <div className="vfooter">
+        <span className="muted small">
+          {shown < total ? `Showing ${shown} of ${total} ${unit}` : `${total} ${unit}`}
+          {capped ? " — display capped" : ""}
+        </span>
+        {hasMore && (
+          <button
+            className="text-btn sm"
+            onClick={() => setLimit(l => Math.min(l + STEP, renderCap))}
+          >
+            Show more
+          </button>
+        )}
+        {!capped && shown < total && total <= MAX_RENDER && (
+          <button className="text-btn sm" onClick={() => setLimit(total)}>
+            Show all
+          </button>
+        )}
+      </div>
+    </>
+  );
 }
 
 export function InfoPanel({ node }: { node: TreeNode | null }) {
@@ -20,9 +84,6 @@ export function InfoPanel({ node }: { node: TreeNode | null }) {
   return (
     <div className="info">
       <div className="info-header">
-        <span className={"node-icon icon-" + node.icon}>
-          {detail.type === "dataset" ? "⋯" : ""}
-        </span>
         <span className="info-title">{node.label}</span>
         <span className="info-kind">
           {detail.type === "dataset" ? "dataset" : detail.kind}
@@ -86,7 +147,7 @@ export function InfoPanel({ node }: { node: TreeNode | null }) {
             </tbody>
           </table>
           <div className="preview-label">values</div>
-          <pre className="preview">{detail.preview}</pre>
+          <DataValues key={node.id} data={detail.data} />
         </div>
       )}
     </div>

@@ -4,6 +4,15 @@ import { buildTree } from "./tree";
 import { ObjectTree } from "./ObjectTree";
 import { InfoPanel } from "./InfoPanel";
 import { useMediaQuery } from "./useMediaQuery";
+import {
+  applyViewState,
+  emptyViewState,
+  figureHasContent,
+  isolate,
+  showAll,
+  toggleHidden,
+  type ViewState,
+} from "./viewState";
 
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
 
@@ -36,6 +45,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<ViewState>(emptyViewState);
   const [dragOver, setDragOver] = useState(false);
 
   const isMobile = useMediaQuery("(max-width: 820px)");
@@ -58,6 +68,19 @@ export function App() {
   const selectedNode =
     tree && selectedId ? (tree.byId.get(selectedId) ?? null) : null;
 
+  // The figure actually rendered is derived from the parsed figure + view state.
+  const viewFigure = useMemo(
+    () => (figure ? applyViewState(figure, viewState) : null),
+    [figure, viewState]
+  );
+  const nothingVisible = !!viewFigure && !figureHasContent(viewFigure);
+
+  const onToggleHidden = (id: string) =>
+    setViewState(vs => toggleHidden(vs, id));
+  const onIsolate = (id: string) =>
+    setViewState(vs => (tree ? isolate(vs, tree, id) : vs));
+  const onShowAll = () => setViewState(showAll);
+
   const loadFile = useCallback(async (file: File) => {
     setLoading(true);
     setError(null);
@@ -67,6 +90,7 @@ export function App() {
       setFigure(fig);
       setFileName(file.name);
       setSelectedId("figure");
+      setViewState(emptyViewState());
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setFigure(null);
@@ -169,11 +193,21 @@ export function App() {
             >
               <div className="panel-head">
                 <span>Objects</span>
-                {isMobile && (
-                  <button className="icon-btn" onClick={() => setLeftOpen(false)}>
-                    ✕
-                  </button>
-                )}
+                <span className="head-actions">
+                  {viewState.hidden.size > 0 && (
+                    <button className="link-btn" onClick={onShowAll}>
+                      Show all
+                    </button>
+                  )}
+                  {isMobile && (
+                    <button
+                      className="icon-btn"
+                      onClick={() => setLeftOpen(false)}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </span>
               </div>
               <div className="panel-body">
                 {tree && (
@@ -181,6 +215,9 @@ export function App() {
                     root={tree.root}
                     selectedId={selectedId}
                     onSelect={onSelect}
+                    viewState={viewState}
+                    onToggleHidden={onToggleHidden}
+                    onIsolate={onIsolate}
                   />
                 )}
               </div>
@@ -190,11 +227,23 @@ export function App() {
             <Divider onResize={dx => setLeftW(w => clamp(w + dx, 180, 520))} />
           )}
 
-          {/* Center: figure */}
+          {/* Center: figure (rendered from the view-state-derived figure) */}
           <main className="center" {...dropHandlers}>
             <div className="figure-host">
-              <FigureView figure={figure} />
+              {viewFigure && !nothingVisible && (
+                <FigureView figure={viewFigure} />
+              )}
             </div>
+            {nothingVisible && (
+              <div className="center-overlay">
+                <div>
+                  <p>Nothing visible</p>
+                  <button className="text-btn" onClick={onShowAll}>
+                    Show all
+                  </button>
+                </div>
+              </div>
+            )}
             {dragOver && <div className="drop-hint">Drop to open</div>}
           </main>
 
