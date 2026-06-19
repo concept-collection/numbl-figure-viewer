@@ -1,98 +1,434 @@
 :root {
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #1a1a1a;
-  background: #fafafa;
+  --bg: #ffffff;
+  --chrome: #f3f3f3;
+  --panel: #f8f8f8;
+  --border: #e2e2e2;
+  --text: #1f1f1f;
+  --muted: #6b6b6b;
+  --accent: #0a66c2;
+  --hover: #ececec;
+  --selected: #d6e8fb;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--text);
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
+html,
+body,
+#root {
+  height: 100%;
   margin: 0;
 }
 
+#root {
+  height: 100vh;
+}
+
 .app {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
 }
 
-header h1 {
-  margin: 0 0 4px;
-  font-size: 1.5rem;
+/* ── Title bar ─────────────────────────────────────────────────────────── */
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
 }
 
-.sub {
-  margin: 0 0 20px;
-  color: #555;
-  font-size: 0.9rem;
+.app-title {
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.dropzone {
-  border: 2px dashed #bbb;
-  border-radius: 8px;
-  padding: 36px 16px;
-  text-align: center;
-  color: #666;
-  cursor: pointer;
-  background: #fff;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
+.file-name {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40vw;
 }
 
-.dropzone:hover,
-.dropzone.over {
-  border-color: #4a90d9;
-  background: #f0f7ff;
+.spacer {
+  flex: 1;
 }
 
-.actions {
-  margin-top: 12px;
-}
-
-.actions button {
+.icon-btn,
+.text-btn {
   font: inherit;
-  font-size: 0.85rem;
-  padding: 6px 14px;
-  border: 1px solid #c8c8c8;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
   cursor: pointer;
+  border-radius: 5px;
+  padding: 4px 8px;
+  line-height: 1;
 }
 
-.actions button:hover:not(:disabled) {
-  border-color: #4a90d9;
-  color: #1a5fa8;
+.icon-btn {
+  font-size: 16px;
+  width: 30px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.actions button:disabled {
+.icon-btn:hover,
+.text-btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.text-btn {
+  border-color: var(--border);
+  font-size: 12px;
+  background: #fff;
+}
+
+.text-btn:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.error {
-  margin-top: 16px;
-  padding: 10px 14px;
-  border-radius: 6px;
+.error-bar {
+  flex-shrink: 0;
+  padding: 8px 12px;
   background: #fdecea;
-  color: #a12;
-  font-size: 0.9rem;
+  color: #a4231f;
+  font-size: 12.5px;
+  border-bottom: 1px solid #f3c2bf;
 }
 
-.figure-wrap {
-  margin-top: 20px;
-  background: #fff;
-  border: 1px solid #e2e2e2;
-  border-radius: 8px;
-  padding: 8px;
+/* ── Empty state ───────────────────────────────────────────────────────── */
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 24px;
 }
 
-/* FigureView fills its positioned parent, mirroring the numbl plot viewer. */
-.figure-inner {
+.empty-inner {
+  border: 2px dashed #c4c4c4;
+  border-radius: 12px;
+  padding: 48px 56px;
+  text-align: center;
+  color: var(--muted);
+  max-width: 460px;
+}
+
+.empty-state.over .empty-inner {
+  border-color: var(--accent);
+  background: #f0f7ff;
+}
+
+.empty-icon {
+  font-size: 40px;
+  color: #b9b9b9;
+}
+
+.empty-inner h2 {
+  margin: 12px 0 6px;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.empty-inner p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+code {
+  font-family: var(--mono);
+  background: #efefef;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+
+/* ── Body / panels ─────────────────────────────────────────────────────── */
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
   position: relative;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.panel.right {
+  background: #fbfbfb;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-body {
+  flex: 1;
+  overflow: auto;
+}
+
+.center {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  background: #fff;
+}
+
+.figure-host {
+  position: absolute;
+  inset: 0;
+}
+
+.drop-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 102, 194, 0.08);
+  border: 2px dashed var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* ── Divider ───────────────────────────────────────────────────────────── */
+.divider {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+}
+
+.divider::after {
+  content: "";
+  position: absolute;
+  inset: 0 2px;
+  background: var(--border);
+}
+
+.divider:hover::after {
+  background: var(--accent);
+}
+
+/* ── Tree ──────────────────────────────────────────────────────────────── */
+.tree {
+  padding: 4px 0;
+  font-size: 13px;
+  user-select: none;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding-right: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tree-row:hover {
+  background: var(--hover);
+}
+
+.tree-row.selected {
+  background: var(--selected);
+}
+
+.twisty {
+  width: 16px;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.twisty.leaf {
+  visibility: hidden;
+}
+
+.node-icon {
+  width: 18px;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.icon-figure {
+  color: #7a5cc4;
+}
+.icon-axes {
+  color: #2f8f5b;
+}
+.icon-trace {
+  color: #c2731f;
+}
+.icon-dataset {
+  color: #8a8a8a;
+}
+
+.node-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Info panel ────────────────────────────────────────────────────────── */
+.info {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.info.empty {
+  color: var(--muted);
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.info-title {
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.info-kind {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  background: #ededed;
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+table.props {
   width: 100%;
-  height: 70vh;
-  min-height: 420px;
+  border-collapse: collapse;
+}
+
+table.props td {
+  padding: 3px 6px;
+  vertical-align: top;
+  border-bottom: 1px solid #efefef;
+}
+
+td.pk {
+  color: var(--muted);
+  width: 38%;
+  font-size: 12px;
+}
+
+td.pv {
+  font-family: var(--mono);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  border: 1px solid #00000022;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.preview-label {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.preview {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: #f4f4f4;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 40vh;
+  overflow: auto;
+}
+
+/* ── Mobile drawers ────────────────────────────────────────────────────── */
+.panel.drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: min(82%, 340px);
+  z-index: 20;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.22);
+}
+
+.panel.left.drawer {
+  left: 0;
+}
+
+.panel.right.drawer {
+  right: 0;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+  z-index: 10;
+}
+
+/* Narrow screens: drop the redundant filename (shown in the tree root). */
+@media (max-width: 560px) {
+  .file-name {
+    display: none;
+  }
 }
